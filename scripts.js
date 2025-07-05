@@ -29,10 +29,11 @@ function createTile(type, rotation) {
   tile.dataset.rotation = rotation;
   tile.style.transform = `rotate(${rotation}deg)`;
 
+  // Use SVG data URIs for reliability
   if (type === 'straight') {
-    tile.style.backgroundImage = "url('https://i.imgur.com/6R0Kijq.png')";
+    tile.style.backgroundImage = "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><rect x=\"28\" y=\"8\" width=\"8\" height=\"48\" rx=\"4\" fill=\"%23007bff\"/></svg>')";
   } else if (type === 'elbow') {
-    tile.style.backgroundImage = "url('https://i.imgur.com/WHTCUAq.png')";
+    tile.style.backgroundImage = "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><rect x=\"28\" y=\"8\" width=\"8\" height=\"28\" rx=\"4\" fill=\"%23007bff\"/><rect x=\"28\" y=\"28\" width=\"28\" height=\"8\" rx=\"4\" fill=\"%23007bff\"/></svg>')";
   }
 
   tile.addEventListener('click', () => {
@@ -76,23 +77,89 @@ function buildGrid() {
   tiles = [];
   gridSize = levels[currentLevel].size;
   grid.style.setProperty('--grid-size', gridSize);
-  for (let row = 0; row < gridSize; row++) {
-    tiles[row] = [];
-    for (let col = 0; col < gridSize; col++) {
+
+  // --- Generate a guaranteed path from bottom (source) to top (target) ---
+  // Start at random col in bottom row, end at random col in top row
+  const path = [];
+  let col = Math.floor(Math.random() * gridSize);
+  let row = gridSize - 1;
+  path.push([row, col]);
+  while (row > 0) {
+    // Randomly move up, left, or right (but not out of bounds)
+    const moves = [];
+    if (col > 0) moves.push([row, col - 1]);
+    if (col < gridSize - 1) moves.push([row, col + 1]);
+    moves.push([row - 1, col]);
+    // Prefer up, but allow left/right
+    const next = moves[Math.floor(Math.random() * moves.length)];
+    row = next[0];
+    col = next[1];
+    // Avoid cycles
+    if (!path.some(([r, c]) => r === row && c === col)) {
+      path.push([row, col]);
+    }
+  }
+
+  // Place tiles
+  for (let r = 0; r < gridSize; r++) {
+    tiles[r] = [];
+    for (let c = 0; c < gridSize; c++) {
       let tile;
-      if (row === 0 && col === 0) {
-        tile = document.createElement('div');
-        tile.classList.add('tile', 'source');
-      } else if (row === gridSize - 1 && col === gridSize - 1) {
+      if (r === 0 && path[path.length - 1][1] === c) {
         tile = document.createElement('div');
         tile.classList.add('tile', 'target');
+      } else if (r === gridSize - 1 && path[0][1] === c) {
+        tile = document.createElement('div');
+        tile.classList.add('tile', 'source');
       } else {
-        const type = tileTypes[Math.floor(Math.random() * tileTypes.length)];
-        const rotation = [0, 90, 180, 270][Math.floor(Math.random() * 4)];
-        tile = createTile(type, rotation);
+        // If on the path, set correct pipe type and rotation
+        const onPath = path.some(([pr, pc]) => pr === r && pc === c);
+        if (onPath) {
+          // Find neighbors in path
+          const idx = path.findIndex(([pr, pc]) => pr === r && pc === c);
+          const prev = path[idx - 1];
+          const next = path[idx + 1];
+          let dirs = [];
+          if (prev) dirs.push([prev[0] - r, prev[1] - c]);
+          if (next) dirs.push([next[0] - r, next[1] - c]);
+          // Determine type and rotation
+          let type, rotation;
+          if (dirs.length === 2) {
+            // Straight if both directions are vertical or both horizontal
+            if ((dirs[0][0] === 0 && dirs[1][0] === 0) || (dirs[0][1] === 0 && dirs[1][1] === 0)) {
+              type = 'straight';
+              rotation = dirs[0][0] === 0 ? 0 : 90;
+            } else {
+              type = 'elbow';
+              if ((dirs[0][0] === -1 && dirs[1][1] === 1) || (dirs[1][0] === -1 && dirs[0][1] === 1)) rotation = 0;
+              else if ((dirs[0][0] === -1 && dirs[1][1] === -1) || (dirs[1][0] === -1 && dirs[0][1] === -1)) rotation = 270;
+              else if ((dirs[0][0] === 1 && dirs[1][1] === 1) || (dirs[1][0] === 1 && dirs[0][1] === 1)) rotation = 90;
+              else rotation = 180;
+            }
+          } else {
+            // End of path, just connect to neighbor
+            if (dirs[0][0] === 0) {
+              type = 'straight';
+              rotation = 0;
+            } else {
+              type = 'straight';
+              rotation = 90;
+            }
+          }
+          tile = createTile(type, rotation);
+          // Randomize rotation for challenge
+          tile.dataset.solutionRotation = rotation;
+          tile.dataset.rotation = [0, 90, 180, 270][Math.floor(Math.random() * 4)];
+          tile.style.transform = `rotate(${tile.dataset.rotation}deg)`;
+        } else {
+          // Not on path: random tile
+          const type = tileTypes[Math.floor(Math.random() * tileTypes.length)];
+          const rotation = [0, 90, 180, 270][Math.floor(Math.random() * 4)];
+          tile = createTile(type, rotation);
+        }
       }
       grid.appendChild(tile);
-      tiles[row][col] = tile;
+      tiles[r][c] = tile;
     }
   }
   updateLevelIndicator();
@@ -128,23 +195,67 @@ function nextLevel() {
 
 function gameOver() {
   gameActive = false;
-  message.innerHTML = `
-    <span style='color:#d32f2f;font-size:1.2em'>Game Over!</span><br>
-    <small>Time's up. <a href='https://www.charitywater.org' target='_blank'>Learn how you can help →</a></small><br>
-    <button class='btn' onclick='resetGame()'>Try Again</button>
+  // Fullscreen overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'game-over-overlay';
+  overlay.innerHTML = `
+    <div>
+      <span style='font-size:1.3em'>Game Over!</span><br>
+      <small>Time's up. <a href='https://www.charitywater.org' target='_blank'>Learn how you can help →</a></small><br>
+      <button class='btn' onclick='location.reload()'>Try Again</button>
+    </div>
   `;
+  document.body.appendChild(overlay);
   resetBtn.style.display = 'none';
+  const submitBtn = document.getElementById('submitBtn');
+  if (submitBtn) submitBtn.style.display = 'none';
 }
 
 function checkFlow() {
   if (!gameActive) return;
-  // --- Simulated win condition: 1% chance per click, for demo ---
-  if (Math.random() > 0.99) {
+  // Check if all path tiles are in correct rotation
+  let solved = true;
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      const tile = tiles[r][c];
+      if (tile.dataset.solutionRotation !== undefined) {
+        if (parseInt(tile.dataset.rotation) !== parseInt(tile.dataset.solutionRotation)) {
+          solved = false;
+        }
+      }
+    }
+  }
+  if (solved) {
     message.innerHTML = `
       <span style='color:#ffd700'>💧 You delivered clean water!</span><br>
       <small>1 in 10 people still lack access. <a href='https://www.charitywater.org' target='_blank'>Learn how you can help →</a></small>
     `;
     setTimeout(nextLevel, 1200);
+  }
+}
+
+function submitSolution() {
+  if (!gameActive) return;
+  // Check if all path tiles are in correct rotation
+  let solved = true;
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      const tile = tiles[r][c];
+      if (tile.dataset.solutionRotation !== undefined) {
+        if (parseInt(tile.dataset.rotation) !== parseInt(tile.dataset.solutionRotation)) {
+          solved = false;
+        }
+      }
+    }
+  }
+  if (solved) {
+    message.innerHTML = `
+      <span style='color:#ffd700'>💧 You delivered clean water!</span><br>
+      <small>1 in 10 people still lack access. <a href='https://www.charitywater.org' target='_blank'>Learn how you can help →</a></small>
+    `;
+    setTimeout(nextLevel, 1200);
+  } else {
+    message.innerHTML = `<span style='color:#d32f2f'>Not quite! Try rotating the pipes to connect the water.</span>`;
   }
 }
 

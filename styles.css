@@ -1,80 +1,142 @@
 body {
   margin: 0;
   font-family: 'Segoe UI', sans-serif;
-  background-color: #e3f2fd; /* Light blue for water theme */
+  background-color: #e3f2fd;
   display: flex;
   flex-direction: column;
   align-items: center;
+  min-height: 100vh;
+  box-sizing: border-box;
 }
 
 h1 {
   background-color: #ffd700;
   color: #222;
-  padding: 20px;
+  padding: 20px 0;
   margin: 0;
-  width: 100%;
+  width: 100vw;
   text-align: center;
   letter-spacing: 1px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
-.jerrycan-banner {
-  margin-top: 10px;
-  margin-bottom: 10px;
+.village-banner {
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  margin-top: 8px;
 }
-.jerrycan {
-  width: 60px;
+.village {
+  width: 120px;
+  max-width: 20vw;
   height: auto;
-  display: block;
-  margin: 0 auto;
+}
+
+.source-banner {
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.water-source {
+  width: 180px;
+  max-width: 40vw;
+  height: auto;
 }
 
 .timer {
-  font-size: 1.3em;
+  font-size: 1.2em;
   color: #0077c2;
   font-weight: bold;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
+}
+
+.level-indicator {
+  margin-bottom: 6px;
+  font-size: 1em;
+  color: #0077c2;
+  font-weight: bold;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(var(--grid-size, 5), 60px);
-  grid-template-rows: repeat(var(--grid-size, 5), 60px);
+  grid-template-columns: repeat(var(--grid-size, 5), minmax(36px, 1fr));
+  grid-template-rows: repeat(var(--grid-size, 5), minmax(36px, 1fr));
   gap: 2px;
-  margin-top: 10px;
-  margin-bottom: 10px;
+  margin: 0 0 0 0;
+  width: 90vw;
+  max-width: 420px;
+  aspect-ratio: 1 / 1;
+  background: #b3e5fc;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
 }
 
 .tile {
-  width: 60px;
-  height: 60px;
+  width: 100%;
+  height: 100%;
   background-color: white;
   border: 2px solid #ffd700;
   background-size: cover;
   transition: transform 0.3s;
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  border-radius: 8px;
 }
 
 .source {
-  background-image: url('https://i.imgur.com/o1t4JvN.png');
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  border: 2px solid #ffd700;
+  background-image: none !important;
+  background-color: #0077c2;
+  position: relative;
+}
+.source::after {
+  content: '';
+  display: block;
+  width: 80%;
+  height: 60%;
+  background: url('https://cdn.jsdelivr.net/gh/charity-water-game-assets/water-source.svg') center/contain no-repeat;
+  position: absolute;
+  left: 10%;
+  top: 20%;
 }
 
 .target {
-  background-image: url('https://i.imgur.com/lNvPywu.png');
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  border: 2px solid #ffd700;
+  background-image: none !important;
+  background-color: #ffd700;
+  position: relative;
+}
+.target::after {
+  content: '';
+  display: block;
+  width: 80%;
+  height: 60%;
+  background: url('https://cdn.jsdelivr.net/gh/charity-water-game-assets/village.svg') center/contain no-repeat;
+  position: absolute;
+  left: 10%;
+  top: 20%;
+}
+
+@media (max-width: 600px) {
+  .grid {
+    width: 98vw;
+    max-width: 98vw;
+    min-width: 0;
+  }
+  .village, .water-source {
+    width: 60px;
+    max-width: 30vw;
+  }
+  h1 {
+    font-size: 1.1em;
+    padding: 10px 0;
+  }
 }
 
 .message {
   margin-top: 10px;
-  font-size: 1.2em;
+  font-size: 1.1em;
   text-align: center;
   min-height: 2em;
 }
@@ -115,13 +177,24 @@ h1 {
   letter-spacing: 1px;
 }
 
-.flowing {
-  background-color: #00bfff;
+.game-over-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(227,242,253,0.98);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 2em;
+  color: #d32f2f;
+  text-align: center;
+  padding: 0 10vw;
 }
-
-.level-indicator {
-  margin-top: 8px;
-  font-size: 1.1em;
+.game-over-overlay a {
   color: #0077c2;
-  font-weight: bold;
+  font-size: 0.7em;
+  text-decoration: underline;
 }
