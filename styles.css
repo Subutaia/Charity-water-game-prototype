@@ -1,12 +1,19 @@
+/* Add Proxima Nova Regular font from CDN */
+@import url('https://fonts.googleapis.com/css2?family=Proxima+Nova:wght@400&display=swap');
+
 body {
   margin: 0;
-  font-family: 'Segoe UI', sans-serif;
+  font-family: 'Proxima Nova', 'Segoe UI', Arial, sans-serif;
   background-color: #e3f2fd;
   display: flex;
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
   box-sizing: border-box;
+}
+
+h1, .level-indicator, .timer, .btn, .message, .footer, .village, .water-source {
+  font-family: 'Proxima Nova', 'Segoe UI', Arial, sans-serif;
 }
 
 h1 {
@@ -116,6 +123,12 @@ h1 {
   position: absolute;
   left: 10%;
   top: 20%;
+}
+
+.hint {
+  box-shadow: 0 0 0 4px #00bfff inset;
+  background-color: #e3f7ff !important;
+  transition: box-shadow 0.2s, background 0.2s;
 }
 
 @media (max-width: 600px) {

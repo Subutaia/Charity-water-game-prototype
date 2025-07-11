@@ -9,18 +9,17 @@ const directions = {
   'elbow': [[0, 1], [1, 0]]
 };
 
-const levels = [
-  { size: 4, time: 40 }, // Level 1: 4x4, 40s
-  { size: 5, time: 50 }, // Level 2: 5x5, 50s
-  { size: 6, time: 60 }  // Level 3: 6x6, 60s
-];
-
-let tiles = [];
-let currentLevel = 0;
-let gridSize = levels[currentLevel].size;
-let timer = null;
-let timeLeft = levels[currentLevel].time;
+const difficulties = {
+  easy: { size: 4, time: 60 },
+  normal: { size: 6, time: 45 },
+  hard: { size: 8, time: 30 }
+};
+let currentDifficulty = 'easy';
+let gridSize = difficulties[currentDifficulty].size;
+let timeLeft = difficulties[currentDifficulty].time;
+let timer = 0;
 let gameActive = true;
+let tiles = [];
 
 function createTile(type, rotation) {
   const tile = document.createElement('div');
@@ -57,9 +56,15 @@ function updateLevelIndicator() {
   indicator.textContent = `Level ${currentLevel + 1} of ${levels.length}`;
 }
 
+function setDifficulty(level) {
+  currentDifficulty = level;
+  gridSize = difficulties[level].size;
+  timeLeft = difficulties[level].time;
+  resetGame();
+}
+
 function startTimer() {
   clearInterval(timer);
-  timeLeft = levels[currentLevel].time;
   timerDisplay.textContent = `⏱️ ${timeLeft}s`;
   timer = setInterval(() => {
     if (!gameActive) return;
@@ -75,7 +80,6 @@ function startTimer() {
 function buildGrid() {
   grid.innerHTML = '';
   tiles = [];
-  gridSize = levels[currentLevel].size;
   grid.style.setProperty('--grid-size', gridSize);
 
   // --- Generate a guaranteed path from bottom (source) to top (target) ---
@@ -168,29 +172,11 @@ function buildGrid() {
 function resetGame() {
   message.textContent = '';
   gameActive = true;
-  currentLevel = 0;
   buildGrid();
+  timerDisplay.textContent = `⏱️ ${timeLeft}s`;
   startTimer();
   resetBtn.textContent = 'Reset Puzzle';
   resetBtn.style.display = '';
-}
-
-function nextLevel() {
-  currentLevel++;
-  if (currentLevel < levels.length) {
-    buildGrid();
-    startTimer();
-    message.innerHTML = `<span style='color:#0077c2'>Great! Next level...</span>`;
-  } else {
-    gameActive = false;
-    clearInterval(timer);
-    message.innerHTML = `
-      <span style='color:#00bfff;font-size:1.3em'>🎉 You delivered clean water to every village! 🎉</span><br>
-      <small>Thank you for playing. <a href='https://www.charitywater.org' target='_blank'>Learn how you can help →</a></small><br>
-      <button class='btn' onclick='resetGame()'>Play Again</button>
-    `;
-    resetBtn.style.display = 'none';
-  }
 }
 
 function gameOver() {
@@ -226,6 +212,15 @@ function checkFlow() {
     }
   }
   if (solved) {
+    // Remove all non-path tiles
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
+        const tile = tiles[r][c];
+        if (tile.dataset.solutionRotation === undefined && !tile.classList.contains('source') && !tile.classList.contains('target')) {
+          tile.style.visibility = 'hidden';
+        }
+      }
+    }
     message.innerHTML = `
       <span style='color:#ffd700'>💧 You delivered clean water!</span><br>
       <small>1 in 10 people still lack access. <a href='https://www.charitywater.org' target='_blank'>Learn how you can help →</a></small>
@@ -256,6 +251,26 @@ function submitSolution() {
     setTimeout(nextLevel, 1200);
   } else {
     message.innerHTML = `<span style='color:#d32f2f'>Not quite! Try rotating the pipes to connect the water.</span>`;
+  }
+}
+
+function showHint() {
+  // Remove about half of the extra pipes (not on the solution path)
+  let extraTiles = [];
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      const tile = tiles[r][c];
+      if (tile.dataset.solutionRotation === undefined && !tile.classList.contains('source') && !tile.classList.contains('target')) {
+        extraTiles.push(tile);
+      }
+    }
+  }
+  // Randomly hide half of the extra tiles
+  const toRemove = Math.floor(extraTiles.length / 2);
+  for (let i = 0; i < toRemove; i++) {
+    const idx = Math.floor(Math.random() * extraTiles.length);
+    extraTiles[idx].style.visibility = 'hidden';
+    extraTiles.splice(idx, 1);
   }
 }
 
